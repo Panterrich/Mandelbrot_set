@@ -7,6 +7,8 @@
 
 const int Nmax = 10000;
 
+const __m128  Steps = _mm_set_ps(3, 2, 1, 0);
+
 //==================================================================
 
 class FPS
@@ -62,70 +64,45 @@ void Set_pixel(sf::Uint8* pixels, int dx, int dy, int n)
 
 void Count_mondelbrot_set(sf::Uint8* pixels, float scale, float cx, float cy, float R)
 {
-    const float R2 = R * R;
+    const float square = R * R;
+    const __m128 R2 = _mm_set_ps1(square);
+
+    __m128 Scale = _mm_set_ps1(scale);
 
     for (int dy = 0; dy < 720; dy++)
     {
         float y0 = (dy - cy) * scale;
         float x0 = (   - cx) * scale;
 
-    //     for (int dx = 0; dx < 1280; dx += 4, x0 += 4 * scale)
-    //     {
-    //         float X0[4] = {x0, x0 + scale, x0 + 2 * scale, x0 + 3 * scale};
-    //         float Y0[4] = {y0, y0, y0, y0};
-
-    //         int N[4] = {0, 0, 0, 0};
-
-    //         float X[4] = {X0[0], X0[1], X0[2], X0[3]};
-    //         float Y[4] = {Y0[0], Y0[1], Y0[2], Y0[3]};
-
-    //         for (int i = 0; i < 4; ++i)
-    //         {
-    //             for ( ; N[i] < Nmax; N[i]++)
-    //             {
-    //                 float x2 = X[i] * X[i];
-    //                 float y2 = Y[i] * Y[i];
-    //                 float xy = X[i] * Y[i];
-
-    //                 float r2 = x2 + y2;
-
-    //                 if (r2 > R2) break;
-
-    //                 X[i] = x2 - y2 + X0[i];
-    //                 Y[i] = xy + xy + Y0[i];
-    //             }
-    //         } 
-            
-    //         for (int i = 0; i < 4; ++i)
-    //         {
-    //             Set_pixel(pixels, dx + i, dy, N[i]);
-    //         }
-    //     }
-
-        for (int dx = 0; dx < 1280; dx++, x0 += scale)
+        for (int dx = 0; dx < 1280; dx += 4, x0 += 4 * scale)
         {
+            __m128 X0 = _mm_add_ps(_mm_set_ps1(x0), _mm_mul_ps(Scale, Steps));
+            __m128 Y0 = _mm_set_ps1(y0);
+            __m128i N = _mm_setzero_si128();
+
             int n = 0;
 
-            float x = x0;
-            float y = y0;
-
-        
+            __m128 X = X0;
+            __m128 Y = Y0;
+   
             for ( ; n < Nmax; n++)
             {
-                float x2 = x * x;
-                float y2 = y * y;
-                float xy = x * y;
+                __m128 x2 = _mm_mul_ps(X, X);
+                __m128 y2 = _mm_mul_ps(Y, Y);
+                __m128 xy = _mm_mul_ps(X, Y);
 
-                float r2 = x2 + y2;
+                __m128 r2 = _mm_add_ps(x2, y2);
 
                 if (r2 > R2) break;
 
-                x = x2 - y2 + x0;
-                y = xy + xy + y0;
+                X = _mm_add_ps(_mm_sub_ps(x2, y2), X0);
+                Y = _mm_add_ps(_mm_add_ps(xy, xy), Y0);
             }
             
-        
-            Set_pixel(pixels, dx, dy, n);
+            for (int i = 0; i < 4; ++i)
+            {
+                Set_pixel(pixels, dx + i, dy, N[i]);
+            }
         }
 
     }
