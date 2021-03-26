@@ -5,10 +5,10 @@
 #include <math.h>
 //==================================================================
 
-const int Nmax = 10000;
+const int Nmax = 1000;
 
 const __m256 Steps = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
-const __m256i Mask = _mm256_set1_epi32(1);
+const __m256 Mask = _mm256_set1_ps(1);
 
 //==================================================================
 
@@ -130,11 +130,10 @@ void Count_mondelbrot_set(sf::Uint8* pixels, float scale, float cx, float cy, fl
                 X = _mm256_add_ps(_mm256_sub_ps(x2, y2), X0);
                 Y = _mm256_add_ps(_mm256_add_ps(xy, xy), Y0);
 
-                add = _mm512_maskz_and_epi32(inc, add, Mask);
-                N = _mm512_add_epi32(add, N);
+                N = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(inc, Mask)), N);
             }
-            
-            for (int i = 0; i < 16; i++)
+
+            for (int i = 0; i < 8; i++)
             {   
                 Set_pixel(pixels, dx + i, dy, iterations[i]);
             }
