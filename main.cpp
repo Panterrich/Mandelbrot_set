@@ -3,12 +3,20 @@
 #include <x86intrin.h>
 #include <stdio.h>
 #include <math.h>
+//=================================================================
+//     Проверок:          Проверок:
+//
+//   256: 10000 - 1.45 fps |  1000 - 8.91 fps
+//   128: 10000 - 0.80 fps |  1000 - 6.05 fps 
+// array: 10000 - 0.22 fps |  1000 - 1.92 fps
+//    no: 10000 - 0.27 fps |  1000 - 2.06 fps 
+//
 //==================================================================
 
 const int Nmax = 1000;
 
 const __m256 Steps = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
-const __m256 Mask = _mm256_set1_ps(1);
+const __m256 Mask  = _mm256_set1_ps(1);
 
 //==================================================================
 
@@ -95,8 +103,8 @@ void Count_mondelbrot_set(sf::Uint8* pixels, float scale, float cx, float cy, fl
 
     for (int dy = 0; dy < 720; dy++)
     {
-        float y0 = (dy - cy) * scale;
-        float x0 = (   - cx) * scale;
+        float y0 = (dy - cy - 360) * scale;
+        float x0 = (   - cx - 640) * scale;
 
         for (int dx = 0; dx < 1280; dx += 8, x0 += 8 * scale)
         {
@@ -162,8 +170,8 @@ int main()
     Set_text(&fps_text, font, sf::Color(20, 250, 20), 40, 20, 20);
 
     float scale = 0.004;
-    int x = 760;
-    int y = 360;
+    int x = 100;
+    int y = 0;
 
     bool draw_set = false;
     bool box_fps  = false;
