@@ -47,6 +47,48 @@ class FPS
         }
 };
 
+class Timer
+{
+    private:
+        sf::Clock clock_;
+        float time_;
+        bool on_;
+
+    public:
+        Timer() : time_(0), on_(true) {clock_.restart();}
+       ~Timer() {time_ = 0; on_ = false;}
+
+        float time() 
+        {
+            if (!on_) 
+            {
+                return time_;
+            }
+
+            else
+            {
+                return time_ + clock_.getElapsedTime().asSeconds();
+            }
+        }
+
+        void pause()
+        {
+            if (on_)
+            {
+                time_ += clock_.getElapsedTime().asSeconds();
+                on_ = false;
+                clock_.restart();
+            }
+
+            else
+            {
+                on_ = true;
+                clock_.restart();
+            }
+        }
+
+};
+
 void Fps_text_update(const FPS& fps, char* buffer, sf::Text* text)
 {
     sprintf(buffer, "%.2f", fps.getFPS());
@@ -94,10 +136,16 @@ void Set_pixel(sf::Uint8* pixels, int dx, int dy, int n)
 
 }
 
-void Count_mondelbrot_set(sf::Uint8* pixels, float scale, float cx, float cy, float R)
+void Count_Julia_set(sf::Uint8* pixels, float scale, float cx, float cy, float mod, float phi, float R)
 {
     const float square = R * R;
     const __m256 R2 = _mm256_set1_ps(square);
+
+    float x_a = mod * cos(phi);
+    float y_a = mod * sin(phi);
+
+    __m256 X_A   = _mm256_set1_ps(x_a);
+    __m256 Y_A   = _mm256_set1_ps(y_a);
 
     __m256 Scale = _mm256_set1_ps(scale);
 
@@ -135,8 +183,8 @@ void Count_mondelbrot_set(sf::Uint8* pixels, float scale, float cx, float cy, fl
                 __m256 inc = _mm256_cmp_ps(r2, R2, _CMP_LT_OS);
                 if (!_mm256_movemask_ps(inc)) break;
 
-                X = _mm256_add_ps(_mm256_sub_ps(x2, y2), X0);
-                Y = _mm256_add_ps(_mm256_add_ps(xy, xy), Y0);
+                X = _mm256_add_ps(_mm256_sub_ps(x2, y2), X_A);
+                Y = _mm256_add_ps(_mm256_add_ps(xy, xy), Y_A);
 
                 N = _mm256_add_epi32(_mm256_cvtps_epi32(_mm256_and_ps(inc, Mask)), N);
             }
@@ -173,6 +221,8 @@ int main()
     int x = 100;
     int y = 0;
 
+    Timer timer; 
+    
     bool draw_set = false;
     bool box_fps  = false;
     
@@ -181,6 +231,9 @@ int main()
         sf::Event Event;
 
         fps.update();
+
+        float r = 1;
+        float phi = timer.time() / 3;
 
         while (window.pollEvent(Event))
         {
@@ -206,6 +259,7 @@ int main()
                         case sf::Keyboard::Escape:
                         {
                             draw_set = !draw_set;
+                            timer.pause();
                         }
                         break;
 
@@ -261,12 +315,11 @@ int main()
 
         if (draw_set) 
         {
-            Count_mondelbrot_set(pixels, scale, x, y, 100.f);
+            Count_Julia_set(pixels, scale, x, y, r, phi, 100.f);
         }
 
         screen.update(pixels);
         
-
         Fps_text_update(fps, fps_buffer, &fps_text);
 
         window.clear();
