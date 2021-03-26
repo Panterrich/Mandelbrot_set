@@ -7,8 +7,8 @@
 
 const int Nmax = 10000;
 
-const __m128 Steps = _mm_set_ps(3, 2, 1, 0);
-const __m128 Mask  = _mm_set_ps1(1);
+const __m256 Steps = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+const __m256i Mask = _mm256_set1_epi32(1);
 
 //==================================================================
 
@@ -89,51 +89,52 @@ void Set_pixel(sf::Uint8* pixels, int dx, int dy, int n)
 void Count_mondelbrot_set(sf::Uint8* pixels, float scale, float cx, float cy, float R)
 {
     const float square = R * R;
-    const __m128 R2 = _mm_set_ps1(square);
+    const __m256 R2 = _mm256_set1_ps(square);
 
-    __m128 Scale = _mm_set_ps1(scale);
+    __m256 Scale = _mm256_set1_ps(scale);
 
     for (int dy = 0; dy < 720; dy++)
     {
         float y0 = (dy - cy) * scale;
         float x0 = (   - cx) * scale;
 
-        for (int dx = 0; dx < 1280; dx += 4, x0 += 4 * scale)
+        for (int dx = 0; dx < 1280; dx += 8, x0 += 8 * scale)
         {
-            __m128 X0 = _mm_add_ps(_mm_set_ps1(x0), _mm_mul_ps(Scale, Steps));
-            __m128 Y0 = _mm_set_ps1(y0);
+            __m256 X0 = _mm256_add_ps(_mm256_set1_ps(x0), _mm256_mul_ps(Scale, Steps));
+            __m256 Y0 = _mm256_set1_ps(y0);
 
             union 
             {
-                int iterations[4];
-                __m128i N = _mm_setzero_si128();
+                __m256i N = _mm256_setzero_si256();
+                int iterations[8];
             };
             
 
             int n = 0;
 
-            __m128 X = X0;
-            __m128 Y = Y0;
+            __m256 X = X0;
+            __m256 Y = Y0;
+            __m256i add = _mm256_set1_epi32(1);
    
             for ( ; n < Nmax; n++)
             {
-                __m128 x2 = _mm_mul_ps(X, X);
-                __m128 y2 = _mm_mul_ps(Y, Y);
-                __m128 xy = _mm_mul_ps(X, Y);
+                __m256 x2 = _mm256_mul_ps(X, X);
+                __m256 y2 = _mm256_mul_ps(Y, Y);
+                __m256 xy = _mm256_mul_ps(X, Y);
 
-                __m128 r2 = _mm_add_ps(x2, y2);
+                __m256 r2 = _mm256_add_ps(x2, y2);
+        
+                __m256 inc = _mm256_cmp_ps(r2, R2, _CMP_LT_OS);
+                if (!_mm256_movemask_ps(inc)) break;
 
-                __m128 inc = _mm_cmplt_ps(r2, R2);
-                if (!_mm_movemask_ps(inc)) break;
+                X = _mm256_add_ps(_mm256_sub_ps(x2, y2), X0);
+                Y = _mm256_add_ps(_mm256_add_ps(xy, xy), Y0);
 
-                X = _mm_add_ps(_mm_sub_ps(x2, y2), X0);
-                Y = _mm_add_ps(_mm_add_ps(xy, xy), Y0);
-
-                N = _mm_add_epi32(_mm_cvtps_epi32(_mm_and_ps(inc, Mask)), N);
-                
+                add = _mm512_maskz_and_epi32(inc, add, Mask);
+                N = _mm512_add_epi32(add, N);
             }
             
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 16; i++)
             {   
                 Set_pixel(pixels, dx + i, dy, iterations[i]);
             }
