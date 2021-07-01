@@ -86,7 +86,6 @@ class Timer
                 clock_.restart();
             }
         }
-
 };
 
 void Fps_text_update(const FPS& fps, char* buffer, sf::Text* text)
@@ -259,6 +258,12 @@ int main()
                         case sf::Keyboard::Escape:
                         {
                             draw_set = !draw_set;
+                            timer.pause();
+                        }
+                        break;
+
+                        case sf::Keyboard::S:
+                        {
                             timer.pause();
                         }
                         break;
